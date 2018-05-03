@@ -51,7 +51,6 @@ exports.sheetsToSlack = functions.https.onRequest((request, response) => {
                 for (var index in cells) {
                     // If the value of each cell is the sane as the stockNo, ding ding we found a winner
                     if (cells[index].value == stockNo) {
-                        console.log("Row");
                         hasStockNumber = true;
                         row = cells[index].row;
                         break;
