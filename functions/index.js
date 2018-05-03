@@ -6,7 +6,11 @@ const async = require('async');
 // After enabling the Google Drive API under APIs and Services
 // More info at:  https://support.google.com/googleapi/answer/6158841?hl=en&ref_topic=7013279
 // Service Account Info at: https://github.com/theoephraim/node-google-spreadsheet#service-account-recommended-method
-const credentials = require('./config/service_account.json');
+// const credentials = require('./config/service_account.json');
+const credentials = {
+    client_email: functions.config().googleapi.client_email,
+    private_key: functions.config().googleapi.private_key.replace(/\\n/g, '\n')
+};
 
 // Replace the id in here with the ID from the Google Sheets URL
 var googleSheets = new sheets('1bJuthZOtLK_pyt0ClEl3K9lbByRlm_LrlbjqnPYvYQU');
@@ -18,6 +22,7 @@ var googleSheets = new sheets('1bJuthZOtLK_pyt0ClEl3K9lbByRlm_LrlbjqnPYvYQU');
 exports.sheetsToSlack = functions.https.onRequest((request, response) => {
     const stockNo = request.body.text;
     var worksheet;
+    var row, hasStockNumber = false;
 
     // This is a good tool to run each function only after the predecessor is done
     async.series([
@@ -43,7 +48,6 @@ exports.sheetsToSlack = functions.https.onRequest((request, response) => {
                 'max-col': 4,
                 'return-empty': true
             }, function (err, cells) {
-                var row, hasStockNumber = false;
                 for (var index in cells) {
                     // If the value of each cell is the sane as the stockNo, ding ding we found a winnder
                     if (cells[index].value == stockNo) {
@@ -52,15 +56,19 @@ exports.sheetsToSlack = functions.https.onRequest((request, response) => {
                         break;
                     }
                 }
-                // Respond with an output.
-                if (hasStockNumber) {
-                    response.send("The vehicle stock exists on row " + row);
-                } else {
-                    response.send("Stock does not exist.");
-                }
+                step();
             });
+        },
+        function output(step) {
+            // Respond with an output.
+            if (hasStockNumber) {
+                response.send("The vehicle stock exists on row " + row);
+            } else {
+                response.send("Stock does not exist.");
+            }
         }
-    ], function(err) {
+    ], function (err) {
+        console.error(err);
         response.send("Something went wrong, make sure you entered the right stock No.");
     });
 });
