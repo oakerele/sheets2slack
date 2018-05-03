@@ -22,8 +22,8 @@ exports.sheetsToSlack = functions.https.onRequest((request, response) => {
     var row, hasStockNumber = false;
 
     // Replace the id in here with the ID from the Google Sheets URL
-    var googleSheets = new sheets('1bJuthZOtLK_pyt0ClEl3K9lbByRlm_LrlbjqnPYvYQU');
-    
+    var googleSheets = new sheets('1mpHZ9cSgjgbeFsvEUU3oHp3kbtn4c2v3Z282pnbs6GE');
+
     // This is a good tool to run each function only after the predecessor is done
     async.series([
         function setAuth(step) {
@@ -49,8 +49,9 @@ exports.sheetsToSlack = functions.https.onRequest((request, response) => {
                 'return-empty': true
             }, function (err, cells) {
                 for (var index in cells) {
-                    // If the value of each cell is the sane as the stockNo, ding ding we found a winnder
+                    // If the value of each cell is the sane as the stockNo, ding ding we found a winner
                     if (cells[index].value == stockNo) {
+                        console.log("Row");
                         hasStockNumber = true;
                         row = cells[index].row;
                         break;
@@ -66,6 +67,7 @@ exports.sheetsToSlack = functions.https.onRequest((request, response) => {
             } else {
                 response.send("Stock does not exist.");
             }
+            step();
         }
     ], function (err) {
         console.error(err);
