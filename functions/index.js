@@ -12,9 +12,6 @@ const credentials = {
     private_key: functions.config().googleapi.private_key.replace(/\\n/g, '\n')
 };
 
-// Replace the id in here with the ID from the Google Sheets URL
-var googleSheets = new sheets('1bJuthZOtLK_pyt0ClEl3K9lbByRlm_LrlbjqnPYvYQU');
-
 /**
  * NOTE: This is not good code. The code has to accomodate for the limitations of the
  * google API and also bad human habit of leaving empty rows in sheet instead of a border 😫
@@ -24,6 +21,9 @@ exports.sheetsToSlack = functions.https.onRequest((request, response) => {
     var worksheet;
     var row, hasStockNumber = false;
 
+    // Replace the id in here with the ID from the Google Sheets URL
+    var googleSheets = new sheets('1bJuthZOtLK_pyt0ClEl3K9lbByRlm_LrlbjqnPYvYQU');
+    
     // This is a good tool to run each function only after the predecessor is done
     async.series([
         function setAuth(step) {
