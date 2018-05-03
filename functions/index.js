@@ -17,7 +17,7 @@ const credentials = {
  * google API and also bad human habit of leaving empty rows in sheet instead of a border 😫
  */
 exports.sheetsToSlack = functions.https.onRequest((request, response) => {
-    const stockNo = request.body.text;
+    const stockNo = request.body.text.toLowerCase();
     var worksheet;
     var row, hasStockNumber = false;
 
@@ -43,13 +43,14 @@ exports.sheetsToSlack = functions.https.onRequest((request, response) => {
             // be too sure we are at the end of the document
             worksheet.getCells({
                 'min-row': 1,
-                'max-row': worksheet.rowCount,
+                'max-row': parseInt(worksheet.rowCount/2),
                 'min-col': 4,
                 'max-col': 4,
                 'return-empty': true
             }, function (err, cells) {
                 for (var index in cells) {
                     // If the value of each cell is the sane as the stockNo, ding ding we found a winner
+                    var value = cells[index].value.toLowerCase();
                     if (cells[index].value == stockNo) {
                         hasStockNumber = true;
                         row = cells[index].row;
