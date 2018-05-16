@@ -1,6 +1,5 @@
 const functions = require('firebase-functions');
 const sheets = require('google-spreadsheet');
-const async = require('async');
 const request = require('request-promise');
 const admin = require('firebase-admin');
 admin.initializeApp(functions.config().firebase);
@@ -44,27 +43,18 @@ exports.commandQueue = functions.database.ref("triggers/{triggerID}").onCreate((
     var googleSheets = new sheets('1mpHZ9cSgjgbeFsvEUU3oHp3kbtn4c2v3Z282pnbs6GE');
     var webhookURL = val.response_url;
 
+    admin.database().ref(`triggers/${context.params.triggerID}`).remove();
     // This is a good tool to run each function only after the predecessor is done
-    async.series([
-        function deleteTrigger(step) {
-            admin.database().ref(`triggers/${context.eventId}`).remove();
-            step();
-        },
-        function setAuth(step) {
-            // Authenticate the user with creds and pass the callback function
-            googleSheets.useServiceAccountAuth(credentials, step);
-        },
-        function getWorksheet(step) {
-            googleSheets.getInfo(function (err, info) {
-                // Set the worksheet to the first worksheet, 0 indexed
-                worksheet = info.worksheets[0];
-                step();
-            });
-        },
-        function workingWithCells(step) {
-            // Get the stock number column by setting the min and max to it's 1 based index
-            // Scan all the rows since space is a requirement in the google sheet and we can never
-            // be too sure we are at the end of the document
+
+    // Authenticate the user with creds and pass the callback function
+    googleSheets.useServiceAccountAuth(credentials, () => {
+        googleSheets.getInfo(function (err, info) {
+            if (err) {
+                console.error("Get Info: ", err);
+                return pushResponse(webhookURL, "Something went wrong, make sure you entered the right stock No.");
+            }
+            // Set the worksheet to the first worksheet, 0 indexed
+            worksheet = info.worksheets[0];
             worksheet.getCells({
                 'min-row': 1,
                 'max-row': parseInt(worksheet.rowCount / 2),
@@ -72,6 +62,10 @@ exports.commandQueue = functions.database.ref("triggers/{triggerID}").onCreate((
                 'max-col': 4,
                 'return-empty': true
             }, function (err, cells) {
+                if (err) {
+                    console.error("Get Cells: ", err);
+                    return pushResponse(webhookURL, "Something went wrong, make sure you entered the right stock No.");
+                }
                 for (var index in cells) {
                     // If the value of each cell is the sane as the stockNo, ding ding we found a winner
                     var value = cells[index].value.toLowerCase();
@@ -81,23 +75,30 @@ exports.commandQueue = functions.database.ref("triggers/{triggerID}").onCreate((
                         break;
                     }
                 }
-                step();
+
+                var responseText = hasStockNumber ? `The vehicle stock exists on row ${row}` : "Stock does not exist.";
+                return pushResponse(webhookURL, responseText);
             });
-        },
-        function output(step) {
-            // Respond with an output.
-            var responseText = hasStockNumber ? `The vehicle stock exists on row ${row}` : "Stock does not exist.";
-            return promiseReq(webhookURL, responseText).then(() => {
-                step();
-            });
-        }
-    ], function (err) {
-        if (!err) return null;
-        return promiseReq(webhookURL, "Something went wrong, make sure you entered the right stock No.");
+        });
     });
 });
 
-function promiseReq(webhookURL, responseText) {
+
+exports.responseQueue = functions.database.ref("responses/{responseID}").onCreate((snap, context) => {
+    const val = snap.val();
+    return sendToSlack(val.webhookURL, val.responseText).then(() => {
+        return admin.database().ref(`responses/${context.params.responseID}`).remove();
+    })
+});
+
+function pushResponse(webhookURL, responseText) {
+    return admin.database().ref('responses').push({
+        webhookURL: webhookURL,
+        responseText: responseText
+    })
+}
+
+function sendToSlack(webhookURL, responseText) {
     return request({
         uri: webhookURL,
         method: 'POST',
@@ -105,7 +106,5 @@ function promiseReq(webhookURL, responseText) {
         body: {
             text: responseText
         }
-    }).then(() => {
-        console.log("The post");
     })
 }
