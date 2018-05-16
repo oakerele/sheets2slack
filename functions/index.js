@@ -92,11 +92,12 @@ exports.commandQueue = functions.database.ref("triggers/{triggerID}").onCreate((
             });
         }
     ], function (err) {
+        if (!err) return null;
         return promiseReq(webhookURL, "Something went wrong, make sure you entered the right stock No.");
     });
 });
 
-function promiseReq(webhookURL, text) {
+function promiseReq(webhookURL, responseText) {
     return request({
         uri: webhookURL,
         method: 'POST',
