@@ -37,7 +37,7 @@ app.post('/getStockNumber', function (req, res) {
     var row, hasStockNumber = false;
 
     // Replace the id in here with the ID from the Google Sheets URL
-    var googleSheets = new sheets('1mpHZ9cSgjgbeFsvEUU3oHp3kbtn4c2v3Z282pnbs6GE');
+    var googleSheets = new sheets(process.env.SHEET_ID);
 
     // Authenticate the user with creds and pass the callback function
     googleSheets.useServiceAccountAuth(credentials, () => {
@@ -84,5 +84,4 @@ app.post('/getStockNumber', function (req, res) {
 
 app.listen(PORT, () => {
     console.log(`App listening on port ${PORT}`);
-    console.log('Press Ctrl+C to quit.');
 });
