@@ -63,4 +63,3 @@ typings/
 .env
 
 **/*/service_account.json
-app.yaml
