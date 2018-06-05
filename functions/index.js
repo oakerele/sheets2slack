@@ -18,25 +18,16 @@ const credentials = {
  */
 exports.sheetsToSlack = functions.https.onRequest((request, response) => {
   var body = request.body;
-  const stockNo = body.text.toLowerCase();
+  var stockNo = body.text.toLowerCase();
   var worksheet;
   var row, hasStockNumber = false;
-  const nextFunction = "https://us-central1-andymohr-sheets-4-slack.cloudfunctions.net/functionToSlack";
-  const webhookURL = body.response_url;
-
-  response.contentType("json").status(200).send({
-    "response_type": "ephemeral",
-    "text": "Getting response..."
-  });
 
   // Replace the id in here with the ID from the Google Sheets URL
   var googleSheets = new sheets(functions.config().googleapi.sheet_id);
 
   // Authenticate the user with creds and pass the callback function
   googleSheets.useServiceAccountAuth(credentials, function () {
-    console.log("1");
     googleSheets.getInfo(function (err, info) {
-      console.log("2");
       // Set the worksheet to the first worksheet, 0 indexed
       worksheet = info.worksheets[0];
 
@@ -50,7 +41,6 @@ exports.sheetsToSlack = functions.https.onRequest((request, response) => {
         'max-col': 4,
         'return-empty': true
       }, function (err, cells) {
-        console.log("3");
         for (var index in cells) {
           // If the value of each cell is the sane as the stockNo, ding ding we found a winner
           var value = cells[index].value.toLowerCase();
@@ -61,39 +51,11 @@ exports.sheetsToSlack = functions.https.onRequest((request, response) => {
           }
         }
         var responseText = hasStockNumber ? `The vehicle stock exists on row ${row}` : "Stock does not exist.";
-        sendToSlack(nextFunction, {
-          response_url: webhookURL,
-          text: responseText
+        response.contentType("json").status(200).send({
+          "response_type": "ephemeral",
+          "text": responseText
         });
       });
     });
   });
 });
-
-exports.functionToSlack = functions.https.onRequest((request, response) => {
-  var body = request.body;
-  const responseText = body.text;
-  const webhookURL = body.response_url;
-
-  return sendToSlack(webhookURL, {
-    text: responseText,
-    response_url: null
-  });
-});
-
-function sendToSlack(webhookURL, response) {
-  return request({
-    uri: webhookURL,
-    method: 'POST',
-    json: true,
-    body: {
-      "response_type": "ephemeral",
-      "response_url": response.response_url,
-      "text": response.text
-    }
-  }).then(() => {
-    console.log("Response Text sent", response.text);
-  }).catch(err => {
-    console.error(err);
-  });
-}
